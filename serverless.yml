@@ -1,0 +1,64 @@
+service: proto-master-
+frameworkVersion: '3'
+useDotenv: true
+
+custom:
+  esbuild:
+    bundle: true
+    external: ['sharp']
+  customDomain:
+    domainName: api.differentroads.co
+    stage: ${opt:stage, 'dev'}
+    basePath: ${opt:stage, 'dev'}
+    createRoute53Record: true
+    endpointType: REGIONAL
+    securityPolicy: tls_1_2
+    apiType: rest
+
+package:
+  individually: true
+  patterns: 
+    - 'src/**'
+    - '!venv/**'
+    - '!.webpack/**'
+
+provider:
+  name: aws
+  runtime: nodejs20.x
+  region: eu-west-1
+  endpointType: REGIONAL
+  profile: dr-programmatic
+  timeout: 29
+  logRetentionInDays: 1
+  environment:
+    STAGE: ${opt:stage, 'dev'}
+  apiGateway:
+    minimumCompressionSize: 1024
+    shouldStartNameWithService: true
+    restApiId: '${env: DIFFERENT_REST_API_ID}'
+    restApiRootResourceId: '${env: DIFFERENT_REST_API_ROOT_ID}'
+  iam:
+    role:
+      statements:
+        - Effect: Allow
+          Action:
+            - dynamodb:*
+            - lambda:*
+            - events:*
+          Resource: '*'
+
+functions:
+  createWebsite:
+    handler: src/functions/createWebsite.handler
+    timeout: 900
+    events: 
+      - http:
+         method: get
+         path: testy/create-website/{retailerId}
+         cors: true
+
+plugins:
+  - serverless-dotenv-plugin  
+  - serverless-esbuild
+  - serverless-offline
+  - serverless-domain-manager
